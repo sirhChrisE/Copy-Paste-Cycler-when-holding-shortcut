@@ -1,0 +1,108 @@
+import tkinter as tk
+from tkinter import filedialog
+import os
+import pandas as pd
+from tkinter import ttk
+
+class FirstScreen:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Paste Cycler")
+        self.root.geometry("260x150")
+
+        self.label = tk.Label(self.root, text="Welcome", font=("Calibri", 14))
+        self.label.pack(pady=20)
+
+        self.choose_file_button = tk.Button(self.root, text="Choose Spreadsheet to Start", font=("Calibri", 12), command=self.on_choose_file_click)
+        self.choose_file_button.pack()
+
+        self.completed = False  # Flag to track completion of the first screen
+
+    def on_choose_file_click(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx"), ("CSV Files", "*.csv"), ("All Files", "*.*")])
+        if file_path:
+            self.root.destroy()  # Close the first screen
+            self.completed = True
+            main(file_path)  # Start the main GUI with the selected file path
+
+class MyGUI:
+    def __init__(self, root, file_path):
+        self.root = root
+        self.root.title("Paste Cycler")
+        self.root.geometry("600x400")
+
+        self.file_path = file_path
+
+        self.top_bar_frame = tk.Frame(self.root)
+        self.top_bar_frame.pack(side=tk.TOP, fill=tk.X)
+
+        self.label = tk.Label(self.top_bar_frame, text="This is the Second Screen", font=("Calibri", 14))
+        self.label.pack(pady=10)
+
+        self.load_data_button = tk.Button(self.top_bar_frame, text="Load Data", font=("Calibri", 12), command=self.load_data)
+        self.load_data_button.pack(side=tk.LEFT, padx=10)
+
+        self.save_button = tk.Button(self.top_bar_frame, text="Save to Database", font=("Calibri", 12), command=self.save_to_database)
+        self.save_button.pack(side=tk.LEFT, padx=10)
+
+        self.selected_column = tk.StringVar()
+        self.checkbuttons_frame = tk.Frame(self.root)
+        self.checkbuttons_frame.pack(side=tk.TOP, fill=tk.X)
+
+        self.treeview_frame = tk.Frame(self.root)
+        self.treeview_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        self.treeview = ttk.Treeview(self.treeview_frame, show="headings")
+        self.treeview.pack(fill=tk.BOTH, expand=True)
+
+    def load_data(self):
+        if not self.file_path:
+            return
+
+        try:
+            df = pd.read_excel(self.file_path)  # Assuming an Excel file
+            self.display_data(df)
+        except Exception as e:
+            self.label.config(text=f"Error loading data: {str(e)}")
+
+    def display_data(self, df):
+        columns = df.columns.tolist()
+        self.treeview.delete(*self.treeview.get_children())
+        self.treeview["columns"] = columns
+
+        for col in columns:
+            self.treeview.heading(col, text=col)
+            self.treeview.column(col, width=100)
+
+        for _, row in df.iterrows():
+            self.treeview.insert("", "end", values=row.tolist())
+
+        self.create_checkbuttons(columns)
+
+    def create_checkbuttons(self, columns):
+        for col in columns:
+            tk.Checkbutton(self.checkbuttons_frame, text=col, variable=self.selected_column, onvalue=col, offvalue="").pack(side=tk.LEFT)
+
+    def save_to_database(self):
+        selected_col = self.selected_column.get()
+        if selected_col:
+            # Implement your database-saving logic here using the selected column data from the DataFrame
+            self.label.config(text=f"Data from column '{selected_col}' saved to the database.")
+        else:
+            self.label.config(text="No column selected. Please select a column to save to the database.")
+
+def main(file_path=None):
+    if file_path is None:
+        root = tk.Tk()
+        first_screen = FirstScreen(root)
+        root.wait_window(first_screen.root)
+
+        if first_screen.completed:
+            main(file_path=first_screen.file_path)
+    else:
+        root = tk.Tk()
+        gui = MyGUI(root, file_path)
+        root.mainloop()
+
+if __name__ == "__main__":
+    main()
